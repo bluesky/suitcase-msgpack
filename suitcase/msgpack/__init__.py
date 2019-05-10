@@ -163,16 +163,16 @@ class Serializer(event_model.DocumentRouter):
         # or 'my-data-from-{plan-name}' -> 'my-data-from-scan'
         filename = f'{self._file_prefix.format(**doc)}.msgpack'
         self._buffer = self._manager.open('all', filename, 'xb')
-        self._buffer.write(_encode(doc))
+        self._buffer.write(_encode(('start', doc)))
 
     def descriptor(self, doc):
-        self._buffer.write(_encode(doc))
+        self._buffer.write(_encode(('descriptor', doc)))
 
     def event_page(self, doc):
-        self._buffer.write(_encode(doc))
+        self._buffer.write(_encode(('event_page', doc)))
 
     def stop(self, doc):
-        self._buffer.write(_encode(doc))
+        self._buffer.write(_encode(('stop', doc)))
 
 
 def _encode(obj):
