@@ -1,5 +1,5 @@
 # List required packages in this file, one per line.
 event-model >=1.8.0
-msgpack
+msgpack==0.5.6
 msgpack_numpy
 suitcase-utils
