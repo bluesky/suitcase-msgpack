@@ -4,6 +4,8 @@
 # but may also accpet additional required or optional keyword arguments, as
 # needed.
 import event_model
+import msgpack
+import msgpack_numpy
 from pathlib import Path
 import suitcase.utils
 from ._version import get_versions
@@ -12,7 +14,7 @@ __version__ = get_versions()['version']
 del get_versions
 
 
-def export(gen, directory, file_prefix='{uid}-', **kwargs):
+def export(gen, directory, file_prefix='{uid}', **kwargs):
     """
     Export a stream of documents to msgpack.
 
@@ -123,7 +125,7 @@ class Serializer(event_model.DocumentRouter):
         dict mapping the 'labels' to lists of file names (or, in general,
         whatever resources are produced by the Manager)
     """
-    def __init__(self, directory, file_prefix='{uid}-', **kwargs):
+    def __init__(self, directory, file_prefix='{uid}', **kwargs):
 
         self._file_prefix = file_prefix
         self._kwargs = kwargs
@@ -137,27 +139,10 @@ class Serializer(event_model.DocumentRouter):
             # The user has given us their own Manager instance. Use that.
             self._manager = directory
 
-        # Finally, we usually need some state related to stashing file
-        # handles/buffers. For a Serializer that only needs *one* file
-        # this may be:
-        #
-        # self._output_file = None
-        #
-        # For a Serializer that writes a separate file per stream:
-        #
-        # self._files = {}
+        self._buffer = None
 
     @property
     def artifacts(self):
-        # The 'artifacts' are the manager's way to exposing to the user a
-        # way to get at the resources that were created. For
-        # `MultiFileManager`, the artifacts are filenames.  For
-        # `MemoryBuffersManager`, the artifacts are the buffer objects
-        # themselves. The Serializer, in turn, exposes that to the user here.
-        #
-        # This must be a property, not a plain attribute, because the
-        # manager's `artifacts` attribute is also a property, and we must
-        # access it anew each time to be sure to get the latest contents.
         return self._manager.artifacts
 
     def close(self):
@@ -166,62 +151,32 @@ class Serializer(event_model.DocumentRouter):
         """
         self._manager.close()
 
-    # These methods enable the Serializer to be used as a context manager:
-    #
-    # with Serializer(...) as serializer:
-    #     ...
-    #
-    # which always calls close() on exit from the with block.
-
     def __enter__(self):
         return self
 
     def __exit__(self, *exception_details):
         self.close()
 
-    # Each of the methods below corresponds to a document type. As
-    # documents flow in through Serializer.__call__, the DocumentRouter base
-    # class will forward them to the method with the name corresponding to
-    # the document's type: RunStart documents go to the 'start' method,
-    # etc.
-    #
-    # In each of these methods:
-    #
-    # - If needed, obtain a new file/buffer from the manager and stash it
-    #   on instance state (self._files, etc.) if you will need it again
-    #   later. Example:
-    #
-    #   filename = f'{self._templated_file_prefix}-primary.csv'
-    #   file = self._manager.open('stream_data', filename, 'xt')
-    #   self._files['primary'] = file
-    #
-    #   See the manager documentation below for more about the arguments to open().
-    #
-    # - Write data into the file, usually something like:
-    #
-    #   content = my_function(doc)
-    #   file.write(content)
-    #
-    #   or
-    #
-    #   my_function(doc, file)
-
     def start(self, doc):
         # Fill in the file_prefix with the contents of the RunStart document.
         # As in, '{uid}' -> 'c1790369-e4b2-46c7-a294-7abfa239691a'
         # or 'my-data-from-{plan-name}' -> 'my-data-from-scan'
-        self._templated_file_prefix = self._file_prefix.format(**doc)
-        ...
+        filename = f'{self._file_prefix.format(**doc)}.msgpack'
+        self._buffer = self._manager.open('all', filename, 'xb')
+        self._buffer.write(_encode(doc))
 
     def descriptor(self, doc):
-        ...
+        self._buffer.write(_encode(doc))
 
     def event_page(self, doc):
-        # There are other representations of Event data -- 'event' and
-        # 'bulk_events' (deprecated). But that does not concern us because
-        # DocumentRouter will convert this representations to 'event_page'
-        # then route them through here.
-        ...
+        self._buffer.write(_encode(doc))
 
     def stop(self, doc):
-        ...
+        self._buffer.write(_encode(doc))
+
+
+def _encode(obj):
+    "Encode as msgpack using numpy-aware encoder."
+    # See https://github.com/msgpack/msgpack-python#string-and-binary-type
+    # for more on use_bin_type.
+    return msgpack.packb(obj, default=msgpack_numpy.encode, use_bin_type=True)
