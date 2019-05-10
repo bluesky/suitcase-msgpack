@@ -1,0 +1,4 @@
+[run]
+branch = true
+include = suitcase/msgpack/*
+omit = suitcase/msgpack/_version.py
