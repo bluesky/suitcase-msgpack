@@ -127,7 +127,7 @@ class Serializer(event_model.DocumentRouter):
         dict mapping the 'labels' to lists of file names (or, in general,
         whatever resources are produced by the Manager)
     """
-    def __init__(self, directory, file_prefix='{start[uid]}-', **kwargs):
+    def __init__(self, directory, file_prefix='{start[uid]}', **kwargs):
 
         self._file_prefix = file_prefix
         self._kwargs = kwargs
