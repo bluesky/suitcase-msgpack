@@ -177,6 +177,16 @@ class Serializer(event_model.DocumentRouter):
         self._buffer.write(_encode(('stop', doc)))
         self.close()
 
+    # This suitcase can be used to store "unfilled" Events, Events that
+    # reference external files using Datum[Page] and Resource documents.
+    # Not all suitcases do this.
+
+    def datum_page(self, doc):
+        self._buffer.write(_encode(('datum_page', doc)))
+
+    def resource(self, doc):
+        self._buffer.write(_encode(('resource', doc)))
+
 
 def _encode(obj):
     "Encode as msgpack using numpy-aware encoder."
