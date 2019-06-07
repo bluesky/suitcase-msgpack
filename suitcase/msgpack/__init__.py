@@ -175,6 +175,7 @@ class Serializer(event_model.DocumentRouter):
 
     def stop(self, doc):
         self._buffer.write(_encode(('stop', doc)))
+        self.close()
 
 
 def _encode(obj):
