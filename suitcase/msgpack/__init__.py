@@ -118,6 +118,11 @@ class Serializer(event_model.DocumentRouter):
         descriptive value depends on the application and is therefore left to
         the user.
 
+    flush : boolean
+        Flush the file to disk after each document. As a consequence, writing
+        the full document stream is slower but each document is immediately
+        available for reading. False by default.
+
     **kwargs : kwargs
         Keyword arugments to be passed through to the underlying I/O library.
 
@@ -127,9 +132,11 @@ class Serializer(event_model.DocumentRouter):
         dict mapping the 'labels' to lists of file names (or, in general,
         whatever resources are produced by the Manager)
     """
-    def __init__(self, directory, file_prefix='{start[uid]}', **kwargs):
+    def __init__(self, directory, file_prefix='{start[uid]}', flush=False,
+                 **kwargs):
 
         self._file_prefix = file_prefix
+        self._flush = flush
         self._kwargs = kwargs
         self._templated_file_prefix = ''  # set when we get a 'start' document
 
@@ -165,16 +172,22 @@ class Serializer(event_model.DocumentRouter):
         # or 'my-data-from-{plan-name}' -> 'my-data-from-scan'
         filename = f'{self._file_prefix.format(start=doc)}.msgpack'
         self._buffer = self._manager.open('all', filename, 'xb')
-        self._buffer.write(_encode(('start', doc)))
+        self._buffer.write(_encode(('start', doc), **self._kwargs))
+        if self._flush:
+            self._buffer.flush()
 
     def descriptor(self, doc):
-        self._buffer.write(_encode(('descriptor', doc)))
+        self._buffer.write(_encode(('descriptor', doc), **self._kwargs))
+        if self._flush:
+            self._buffer.flush()
 
     def event_page(self, doc):
-        self._buffer.write(_encode(('event_page', doc)))
+        self._buffer.write(_encode(('event_page', doc), **self._kwargs))
+        if self._flush:
+            self._buffer.flush()
 
     def stop(self, doc):
-        self._buffer.write(_encode(('stop', doc)))
+        self._buffer.write(_encode(('stop', doc), **self._kwargs))
         self.close()
 
     # This suitcase can be used to store "unfilled" Events, Events that
@@ -182,14 +195,19 @@ class Serializer(event_model.DocumentRouter):
     # Not all suitcases do this.
 
     def datum_page(self, doc):
-        self._buffer.write(_encode(('datum_page', doc)))
+        self._buffer.write(_encode(('datum_page', doc), **self._kwargs))
+        if self._flush:
+            self._buffer.flush()
 
     def resource(self, doc):
-        self._buffer.write(_encode(('resource', doc)))
+        self._buffer.write(_encode(('resource', doc), **self._kwargs))
+        if self._flush:
+            self._buffer.flush()
 
 
-def _encode(obj):
+def _encode(obj, default=msgpack_numpy.encode, use_bin_type=True, **kwargs):
     "Encode as msgpack using numpy-aware encoder."
     # See https://github.com/msgpack/msgpack-python#string-and-binary-type
     # for more on use_bin_type.
-    return msgpack.packb(obj, default=msgpack_numpy.encode, use_bin_type=True)
+    return msgpack.packb(obj, default=default, use_bin_type=use_bin_type,
+                         **kwargs)
