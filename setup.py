@@ -39,8 +39,7 @@ setup(
     cmdclass=versioneer.get_cmdclass(),
     long_description=readme,
     long_description_content_type='text/markdown',
-    packages=['suitcase.msgpack',
-              'suitcase.msgpack.tests'],
+    packages=['suitcase.msgpack'],
     entry_points={
         'console_scripts': [
             # 'some.module:some_function',
