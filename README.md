@@ -13,8 +13,9 @@ pip install suitcase-msgpack
 ```
 import suitcase.msgpack
 docs = db[-1].documents(fill=True)
-suitcase.msgpack.export(docs, 'my_exported_files/', file_prefix='PREFIX-')
+suitcase.msgpack.export(docs, 'my_exported_files/')
 ```
+The exported file will have path `my_exported_files/8fe81a89-8103-487a-85d2-23c70af96f16-primary.msgpack`. The default file prefix can be changed with the `file_prefix` keyword argument. See documentation link below.
 
 ## Documentation
 
