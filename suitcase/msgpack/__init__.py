@@ -149,6 +149,7 @@ class Serializer(event_model.DocumentRouter):
             self._manager = directory
 
         self._buffer = None
+        self._closed = False
 
     @property
     def artifacts(self):
@@ -158,7 +159,9 @@ class Serializer(event_model.DocumentRouter):
         """
         Close all of the resources (e.g. files) allocated.
         """
-        self._manager.close()
+        if not self._closed:
+            self._closed = True
+            self._manager.close()
 
     def __enter__(self):
         return self
